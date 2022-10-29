@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: auth.controllers.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: auth.controllers.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>const { PrismaClient } = require("@prisma/client");
+const { user } = new PrismaClient();
+
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+
+require("dotenv").config();
+
+const { generateOTP, generateExpiryDate, sendOTP } = require("../helpers/utils");
+
+/**
+ * Sign In
+ * @async
+ * @method
+ * @description - Generates OTP for user to sign in after confirming his identity
+ * @param {object} req - request object
+ * @param {object} res - response object
+ * @throws {NotFoundError} - throws an error when the user is not registered with the given phone number
+ */
+const signIn = async (req, res) => {
+    try {
+        const { phone } = req.body;
+
+        // Generates OTP and encrypts it
+        const OTP = generateOTP();
+        const hashedOTP = bcrypt.hashSync(OTP, 8);
+
+        // Generates OTP expiration date
+        const OTP_EXPIRY_DATE = generateExpiryDate();
+
+        // Finds the user with his phone number
+        const userData = await user.findUnique({ where: { phone: phone } });
+        if (!userData) return res.status(404).json({ success: false, message: "Phone number is not registered" });
+
+        // Inserts user OTP with expiration date
+        await user.update({ where: { phone: phone }, data: { otp: hashedOTP, otp_expiry_date: OTP_EXPIRY_DATE } });
+        await sendOTP(phone, OTP);
+
+        return res.status(200).json({ success: true, message: "OTP is sent to the user" });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: "Error occured", error: error });
+    }
+};
+
+/**
+ * Check Authorization
+ * @async
+ * @method
+ * @description - Check if an user has a token to query any API, if yes then go to the next function
+ * @param {object} req - request object
+ * @param {object} res - response object
+ * @throws {NotFoundError} - throws an error when there is no authorization token provided or is wrong
+ */
+const authorizeUser = async (req, res, next) => {
+    try {
+        const authorization = req.headers.authorization;
+        if (!authorization) return res.status(404).json({ success: false, message: "Authorization field is not used in headers" });
+
+        const accessToken = authorization.split(" ")[1];
+        if (!accessToken) return res.status(404).json({ success: false, message: "Access token is not found" });
+
+        jwt.verify(accessToken, process.env.ACCESS_TOKEN_SECRET, function (err) {
+            if (err) return res.status(404).json({ success: false, message: "Error occured while verifying token with jwt", error: err.message });
+
+            next();
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: "Error occured", error: error });
+    }
+};
+
+/**
+ * Verify OTP
+ * @async
+ * @method
+ * @description - Matches users OTP for 3 cases, ther are --> signup, login and forget password
+ * @param {object} req - request object
+ * @param {object} res - response object
+ * @throws {NotFoundError} - throws an error when the phone number doesn't exist in the database
+ */
+const verifyOTP = async (req, res) => {
+    try {
+        const { phone, otp } = req.body;
+
+        // Fetch the user with phone number
+        const userData = await user.findUnique({ where: { phone: phone } });
+
+        // Send error message when the user doesn't exist with the phone number
+        if (!userData) return res.status(404).json({ success: false, message: "User not found with the phone number" });
+
+        const CURRENT_DATE = new Date();
+        const OTP_EXPIRY_DATE = userData.otp_expiry_date;
+        if (CURRENT_DATE > OTP_EXPIRY_DATE) return res.status(404).json({ success: false, message: "OTP expired, request another OTP?" });
+
+        // Match the otp
+        const checkOTP = bcrypt.compareSync(otp, userData.otp);
+        if (!checkOTP) return res.status(404).json({ success: false, message: "OTP doesn't match" });
+
+        // For the users who are signing up update their --> verification status, otp, otp_expiry_date fields
+        // For the users who are just logging in update their --> otp, otp_expiry_date fields
+        const userDataWithToken = await updateUserStatus(userData);
+
+        return res.status(200).json({ success: true, message: "OTP matched", data: userDataWithToken });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: "Error occured", error: error });
+    }
+};
+
+/**
+ * Update User Status
+ * @async
+ * @method
+ * @description - Update the user's isVerified field from false to true and set otp to null after the OTP matches
+ * @param {object} req - request object
+ * @param {object} res - response object
+ * @returns - Data object which has user information and access token
+ */
+const updateUserStatus = async userData => {
+    const { isVerified, phone } = userData;
+    let updatedUserData = null;
+
+    // Check if the user account has been verified or not
+    // Here verified means, user's given OTP matched at the time of signing up
+    if (!isVerified) {
+        updatedUserData = await user.update({ where: { phone: phone }, data: { isVerified: true, otp: null, otp_expiry_date: null } });
+    } else {
+        updatedUserData = await user.update({ where: { phone: phone }, data: { otp: null, otp_expiry_date: null } });
+    }
+
+    // Generate access token
+    const accessToken = jwt.sign({ userData: updatedUserData }, process.env.ACCESS_TOKEN_SECRET);
+
+    // Make a data object
+    const data = { user: updatedUserData, accessToken: accessToken };
+
+    return data;
+};
+
+module.exports = {
+    signIn,
+    authorizeUser,
+    verifyOTP,
+};
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#authorizeUser">authorizeUser</a></li><li><a href="global.html#createBundle">createBundle</a></li><li><a href="global.html#createOrder">createOrder</a></li><li><a href="global.html#createUser">createUser</a></li><li><a href="global.html#deleteBundle">deleteBundle</a></li><li><a href="global.html#deleteOrder">deleteOrder</a></li><li><a href="global.html#deleteUser">deleteUser</a></li><li><a href="global.html#getBundleByID">getBundleByID</a></li><li><a href="global.html#getBundles">getBundles</a></li><li><a href="global.html#getOrderByID">getOrderByID</a></li><li><a href="global.html#getOrders">getOrders</a></li><li><a href="global.html#getUserByID">getUserByID</a></li><li><a href="global.html#getUsers">getUsers</a></li><li><a href="global.html#signIn">signIn</a></li><li><a href="global.html#updateBundle">updateBundle</a></li><li><a href="global.html#updateOrder">updateOrder</a></li><li><a href="global.html#updateUser">updateUser</a></li><li><a href="global.html#updateUserStatus">updateUserStatus</a></li><li><a href="global.html#verifyOTP">verifyOTP</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.11</a> on Thu Sep 22 2022 23:17:33 GMT+0600 (Bangladesh Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

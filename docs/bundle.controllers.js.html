@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: bundle.controllers.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: bundle.controllers.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>const { PrismaClient } = require("@prisma/client");
+const { bundle } = new PrismaClient();
+
+/**
+ * Create Bundle
+ * @async
+ * @method
+ * @description - creates a bundle using the information from the request object
+ * @param {object} req - request object
+ * @param {object} res - response object
+ * @returns {JSON} - returns the newly created bundle information
+ * @throws {NotFoundError} - throws an error when the bundle can't be created
+ */
+const createBundle = async (req, res) => {
+    try {
+        const bundleData = await bundle.create({ data: req.body });
+
+        res.status(200).json({ success: true, message: "Created a new bundle record", data: bundleData });
+    } catch (error) {
+        console.error(error);
+        res.status(404).json({ success: false, message: "Error occured", error: error });
+    }
+};
+
+/**
+ * Get Bundles
+ * @async
+ * @method
+ * @description - finds all the bundles
+ * @param {object} req - request object
+ * @param {object} res - response object
+ * @returns {JSON} - returns the all the bundles information in an array
+ * @throws {NotFoundError} - throws an error when the bundles can't be found
+ */
+const getBundles = async (req, res) => {
+    try {
+        const bundlesData = await bundle.findMany({});
+
+        res.status(200).json({ success: true, message: "bundles found", data: bundlesData });
+    } catch (error) {
+        console.error(error);
+        res.status(404).json({ success: false, message: "Error occured", error: error });
+    }
+};
+
+/**
+ * Get Bundle By ID
+ * @async
+ * @method
+ * @description - finds a bundle by id
+ * @param {object} req - request object
+ * @param {object} res - response object
+ * @returns {JSON} - returns a bundle information
+ * @throws {NotFoundError} - throws an error when the bundle can't be found
+ */
+const getBundleByID = async (req, res) => {
+    try {
+        const { bundle_id } = req.params;
+        const bundleData = await bundle.findUnique({ where: { bundle_id: bundle_id } });
+
+        res.status(200).json({ success: true, message: "bundle found by ID", data: bundleData });
+    } catch (error) {
+        console.error(error);
+        res.status(404).json({ success: false, message: "Error occured", error: error });
+    }
+};
+
+/**
+ * Update Bundle
+ * @async
+ * @method
+ * @description - finds a bundle using its id and then updated the bundle using the information from the request object
+ * @param {object} req - request object
+ * @param {object} res - response object
+ * @returns {JSON} - returns the a successfull message
+ * @throws {NotFoundError} - throws an error when the bundle can't be updated
+ */
+const updateBundle = async (req, res) => {
+    try {
+        const { bundle_id } = req.params;
+        const bundleData = await bundle.update({ where: { bundle_id: bundle_id }, data: req.body });
+
+        res.status(200).json({ success: true, message: "Updated the bundle", data: bundleData });
+    } catch (error) {
+        console.error(error);
+        res.json({ success: false, message: "Error occured", error: error });
+    }
+};
+
+/**
+ * Delete Bundle
+ * @async
+ * @method
+ * @description - finds a bundle using its id and then delete the bundle
+ * @param {object} req - request object
+ * @param {object} res - response object
+ * @returns {JSON} - returns the deleted bundles information
+ * @throws {NotFoundError} - throws an error when the bundle can't be deleted
+ */
+const deleteBundle = async (req, res) => {
+    try {
+        const { bundle_id } = req.params;
+        const bundleData = await bundle.delete({ where: { bundle_id: bundle_id } });
+
+        res.status(200).json({ success: true, message: "Deleted the bundle", data: bundleData });
+    } catch (error) {
+        console.error(error);
+        res.json({ success: false, message: "Error occured", error: error });
+    }
+};
+
+module.exports = {
+    createBundle,
+    getBundles,
+    getBundleByID,
+    updateBundle,
+    deleteBundle,
+};
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#authorizeUser">authorizeUser</a></li><li><a href="global.html#createBundle">createBundle</a></li><li><a href="global.html#createOrder">createOrder</a></li><li><a href="global.html#createUser">createUser</a></li><li><a href="global.html#deleteBundle">deleteBundle</a></li><li><a href="global.html#deleteOrder">deleteOrder</a></li><li><a href="global.html#deleteUser">deleteUser</a></li><li><a href="global.html#getBundleByID">getBundleByID</a></li><li><a href="global.html#getBundles">getBundles</a></li><li><a href="global.html#getOrderByID">getOrderByID</a></li><li><a href="global.html#getOrders">getOrders</a></li><li><a href="global.html#getUserByID">getUserByID</a></li><li><a href="global.html#getUsers">getUsers</a></li><li><a href="global.html#signIn">signIn</a></li><li><a href="global.html#updateBundle">updateBundle</a></li><li><a href="global.html#updateOrder">updateOrder</a></li><li><a href="global.html#updateUser">updateUser</a></li><li><a href="global.html#updateUserStatus">updateUserStatus</a></li><li><a href="global.html#verifyOTP">verifyOTP</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.11</a> on Thu Sep 22 2022 23:17:33 GMT+0600 (Bangladesh Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
