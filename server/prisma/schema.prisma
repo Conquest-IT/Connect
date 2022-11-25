@@ -12,24 +12,22 @@ model User {
   name String
   age Int?
   sex String?
+  address String?
   email String? @unique
   password String? 
   about String?
-  profile_image_source String?
-  images Image[]
   posts Post[]
 }
 
 
 model Image {
   image_id String @id @default(uuid())
-  source String 
+  source String @default("")
 
-  user_id String?
-  user User? @relation(fields: [user_id], references: [user_id])
+  type Image_Type @default(Post)
 
-  post_id String?
-  post Post? @relation(fields: [post_id], references: [post_id])
+  post_id String
+  post Post @relation(fields: [post_id], references: [post_id])
 }
 
 model Post {
@@ -40,4 +38,9 @@ model Post {
   user User @relation(fields: [user_id], references: [user_id])
 
   images Image[]
+}
+
+enum Image_Type{
+  Profile
+  Post
 }
