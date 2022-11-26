@@ -2,13 +2,7 @@ const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcrypt");
 const { user } = new PrismaClient();
 
-// Exclude keys from user
-function exclude(user, keys) {
-    for (let key of keys) {
-        delete user[key];
-    }
-    return user;
-}
+const { exclude } = require("../helpers/utils");
 
 const createUser = async (req, res) => {
     try {
