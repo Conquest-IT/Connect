@@ -1,14 +1,24 @@
-import React, { Children } from "react";
-import Copyright from "../../components/footer/Copyright.component";
-import Navbar from "../../components/navbar/navbar.component";
+import React from "react";
+import { Outlet } from "react-router-dom";
 
-const ProfileLayout = ({ children }) => {
+import { Layout } from "antd";
+const { Content} = Layout;
+
+import Navbar from "../../components/navbar/Navbar.component";
+import Sidebar from "../../components/sidebar/Sidebar.component";
+
+const ProfileLayout = () => {
   return (
-    <>
-      <Navbar />
-      <main>{children}</main>
-      <Copyright />
-    </>
+    <Layout style={{height: "100vh"}}>
+      <Sidebar />
+      <Layout>
+        <Navbar/>
+        <Content>
+          <Outlet/>
+        </Content>
+        {/* <Footer>Footer</Footer> */}
+      </Layout>
+    </Layout>
   );
 };
 
