@@ -31,7 +31,7 @@ model Image {
 }
 
 model Post {
-  post_id String @id
+  post_id String @id @default(uuid())
   post_content String
 
   user_id String
