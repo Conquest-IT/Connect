@@ -2,7 +2,15 @@
 module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
   theme: {
-    extend: {},
+    container: {
+      center: true,
+      padding: "1rem",
+    },
+    extend: {
+      backgroundImage: {
+        'deer': "url('./src/assets/images/deer.jpg')",
+      },
+    },
   },
   plugins: [],
 };
